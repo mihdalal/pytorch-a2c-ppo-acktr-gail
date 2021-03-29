@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from gym.spaces.box import Box
 from gym.wrappers.clip_action import ClipAction
+from rlkit.envs.dmc_wrappers import ActionRepeat, NormalizeActions, TimeLimit
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -63,7 +64,9 @@ class KitchenWrapper(gym.Wrapper):
         )
 
 
-def make_env(env_class, env_kwargs, seed, rank, log_dir, allow_early_resets):
+def make_env(
+    env_class, env_kwargs, seed, rank, log_dir, allow_early_resets, use_raw_actions
+):
     def _thunk():
         # if env_id.startswith("dm"):
         #     _, domain, task = env_id.split('.')
@@ -78,6 +81,10 @@ def make_env(env_class, env_kwargs, seed, rank, log_dir, allow_early_resets):
         #     env = NoopResetEnv(env, noop_max=30)
         #     env = MaxAndSkipEnv(env, skip=4)
         env = KitchenWrapper(env_class(**env_kwargs))
+        if use_raw_actions:
+            env = ActionRepeat(env, 2)
+            env = NormalizeActions(env)
+            env = TimeLimit(env, 500)
         env.seed(int(seed))
 
         if str(env.__class__.__name__).find("TimeLimit") >= 0:
@@ -124,9 +131,12 @@ def make_vec_envs(
     device,
     allow_early_resets,
     num_frame_stack=None,
+    use_raw_actions=False,
 ):
     envs = [
-        make_env(env_class, env_kwargs, seed, i, log_dir, allow_early_resets)
+        make_env(
+            env_class, env_kwargs, seed, i, log_dir, allow_early_resets, use_raw_actions
+        )
         for i in range(num_processes)
     ]
 

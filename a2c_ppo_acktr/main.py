@@ -76,6 +76,7 @@ def experiment(variant):
         rlkit_logger.get_snapshot_dir(),
         device,
         False,
+        use_raw_actions=variant["use_raw_actions"],
     )
 
     actor_critic = Policy(
