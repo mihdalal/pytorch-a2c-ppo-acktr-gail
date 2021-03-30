@@ -11,15 +11,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from d4rl.kitchen.kitchen_envs import (
-    KitchenHingeCabinetV0,
-    KitchenHingeSlideBottomLeftBurnerLightV0,
-    KitchenKettleV0,
-    KitchenLightSwitchV0,
-    KitchenMicrowaveKettleLightTopLeftBurnerV0,
-    KitchenMicrowaveV0,
-    KitchenSlideCabinetV0,
-    KitchenTopLeftBurnerV0,
-)
+    KitchenHingeCabinetV0, KitchenHingeSlideBottomLeftBurnerLightV0,
+    KitchenKettleV0, KitchenLightSwitchV0,
+    KitchenMicrowaveKettleLightTopLeftBurnerV0, KitchenMicrowaveV0,
+    KitchenSlideCabinetV0, KitchenTopLeftBurnerV0)
 from rlkit.core import logger as rlkit_logger
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.envs.dmc_wrappers import ActionRepeat, NormalizeActions, TimeLimit
@@ -224,6 +219,6 @@ def experiment(variant):
             )
             rlkit_logger.record_tabular("time/total (s)", time.time() - start)
             rlkit_logger.record_tabular("exploration/num steps total", total_num_steps)
-            rlkit_logger.record_tabular("trainer/num_train_calls", num_train_calls)
+            rlkit_logger.record_tabular("trainer/num train calls", num_train_calls)
             rlkit_logger.record_tabular("Epoch", j // variant["eval_interval"])
             rlkit_logger.dump_tabular(with_prefix=False, with_timestamp=False)

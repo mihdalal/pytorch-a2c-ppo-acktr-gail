@@ -45,7 +45,7 @@ def evaluate(actor_critic, eval_envs, seed, num_processes, eval_log_dir, device)
 
         rewards += reward
     mean_ep_reward = rewards.sum().item() / num_processes
-    rlkit_logger.record_dict(dict(AverageReturn=mean_ep_reward), prefix="evaluation/")
+    rlkit_logger.record_dict({"Average Returns": mean_ep_reward}, prefix="evaluation/")
     statistics = compute_path_info(all_infos)
     rlkit_logger.record_dict(statistics, prefix="evaluation/")
     print(
