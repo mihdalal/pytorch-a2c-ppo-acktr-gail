@@ -5,7 +5,12 @@ import numpy as np
 import torch
 from gym.spaces.box import Box
 from gym.wrappers.clip_action import ClipAction
-from rlkit.envs.dmc_wrappers import ActionRepeat, NormalizeActions, TimeLimit
+from rlkit.envs.dmc_wrappers import (
+    ActionRepeat,
+    KitchenWrapper,
+    NormalizeActions,
+    TimeLimit,
+)
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -34,82 +39,16 @@ except ImportError:
     pass
 
 
-class KitchenWrapper(gym.Wrapper):
-    def __init__(self, env):
-        gym.Wrapper.__init__(self, env)
-        self._max_episode_steps = env.max_steps
-        self.observation_space = Box(
-            0, 255, (3, self.env.imwidth, self.env.imheight), dtype=np.uint8
-        )
-        self.action_space = Box(
-            -1, 1, (self.env.action_space.low.size,), dtype=np.float32
-        )
-        self.reward_ctr = 0
-
-    def reset(self):
-        obs = self.env.reset()
-        self.reward_ctr = 0
-        return obs.reshape(-1, self.env.imwidth, self.env.imheight)
-
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        self.reward_ctr += reward
-        if done:
-            info["episode"] = {"r": self.reward_ctr}
-        return (
-            obs.reshape(-1, self.env.imwidth, self.env.imheight),
-            reward,
-            done,
-            info,
-        )
-
-
 def make_env(
     env_class, env_kwargs, seed, rank, log_dir, allow_early_resets, use_raw_actions
 ):
     def _thunk():
-        # if env_id.startswith("dm"):
-        #     _, domain, task = env_id.split('.')
-        #     env = dmc2gym.make(domain_name=domain, task_name=task)
-        #     env = ClipAction(env)
-        # else:
-        #     env = gym.make(env_id)
-
-        # is_atari = hasattr(gym.envs, 'atari') and isinstance(
-        #     env.unwrapped, gym.envs.atari.atari_env.AtariEnv)
-        # if is_atari:
-        #     env = NoopResetEnv(env, noop_max=30)
-        #     env = MaxAndSkipEnv(env, skip=4)
         env = KitchenWrapper(env_class(**env_kwargs))
         if use_raw_actions:
             env = ActionRepeat(env, 2)
             env = NormalizeActions(env)
             env = TimeLimit(env, 500)
         env.seed(int(seed))
-
-        if str(env.__class__.__name__).find("TimeLimit") >= 0:
-            env = TimeLimitMask(env)
-
-        # if log_dir is not None:
-        #     env = Monitor(
-        #         env,
-        #         os.path.join(log_dir, str(rank)),
-        #         allow_early_resets=allow_early_resets,
-        #     )
-
-        # if is_atari:
-        #     if len(env.observation_space.shape) == 3:
-        #         env = EpisodicLifeEnv(env)
-        #         if "FIRE" in env.unwrapped.get_action_meanings():
-        #             env = FireResetEnv(env)
-        #         env = WarpFrame(env, width=84, height=84)
-        #         env = ClipRewardEnv(env)
-        # elif len(env.observation_space.shape) == 3:
-        #     raise NotImplementedError(
-        #         "CNN models work only for atari,\n"
-        #         "please use a custom wrapper for a custom pixel input env.\n"
-        #         "See wrap_deepmind for an example."
-        #     )
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
         obs_shape = env.observation_space.shape
