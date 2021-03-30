@@ -5,23 +5,18 @@ import numpy as np
 import torch
 from gym.spaces.box import Box
 from gym.wrappers.clip_action import ClipAction
-from rlkit.envs.dmc_wrappers import (
-    ActionRepeat,
-    KitchenWrapper,
-    NormalizeActions,
-    TimeLimit,
-)
-from stable_baselines3.common.atari_wrappers import (
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-    WarpFrame,
-)
+from rlkit.envs.dmc_wrappers import (ActionRepeat, KitchenWrapper,
+                                     NormalizeActions, TimeLimit)
+from stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
+                                                     EpisodicLifeEnv,
+                                                     FireResetEnv,
+                                                     MaxAndSkipEnv,
+                                                     NoopResetEnv, WarpFrame)
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
-from stable_baselines3.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
+from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
+                                              VecEnvWrapper)
+from stable_baselines3.common.vec_env.vec_normalize import \
+    VecNormalize as VecNormalize_
 
 try:
     import dmc2gym
@@ -43,6 +38,7 @@ def make_env(
     env_class, env_kwargs, seed, rank, log_dir, allow_early_resets, use_raw_actions
 ):
     def _thunk():
+        gym.logger.set_level(40)
         env = KitchenWrapper(env_class(**env_kwargs))
         if use_raw_actions:
             env = ActionRepeat(env, 2)

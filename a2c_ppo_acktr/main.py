@@ -11,10 +11,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from d4rl.kitchen.kitchen_envs import (
-    KitchenHingeCabinetV0, KitchenHingeSlideBottomLeftBurnerLightV0,
-    KitchenKettleV0, KitchenLightSwitchV0,
-    KitchenMicrowaveKettleLightTopLeftBurnerV0, KitchenMicrowaveV0,
-    KitchenSlideCabinetV0, KitchenTopLeftBurnerV0)
+    KitchenHingeCabinetV0,
+    KitchenHingeSlideBottomLeftBurnerLightV0,
+    KitchenKettleV0,
+    KitchenLightSwitchV0,
+    KitchenMicrowaveKettleLightTopLeftBurnerV0,
+    KitchenMicrowaveV0,
+    KitchenSlideCabinetV0,
+    KitchenTopLeftBurnerV0,
+)
 from rlkit.core import logger as rlkit_logger
 from rlkit.core.eval_util import create_stats_ordered_dict
 from rlkit.envs.dmc_wrappers import ActionRepeat, NormalizeActions, TimeLimit
@@ -169,7 +174,7 @@ def experiment(variant):
 
         # save for every interval-th episode or for the last epoch
         if (
-            j % variant["save_interval"] == 0 or j == num_updates - 1
+            j % variant.get("save_interval", int(1e100)) == 0 or j == num_updates - 1
         ) and args.save_dir != "":
             save_path = os.path.join(args.save_dir, "ppo")
             try:
