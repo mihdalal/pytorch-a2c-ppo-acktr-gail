@@ -22,7 +22,12 @@ from d4rl.kitchen.kitchen_envs import (
 )
 from rlkit.core import logger as rlkit_logger
 from rlkit.core.eval_util import create_stats_ordered_dict
-from rlkit.envs.dmc_wrappers import ActionRepeat, NormalizeActions, TimeLimit
+from rlkit.envs.dmc_wrappers import (
+    ActionRepeat,
+    KitchenWrapper,
+    NormalizeActions,
+    TimeLimit,
+)
 
 from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
@@ -43,9 +48,7 @@ def experiment(variant):
     torch.cuda.manual_seed_all(seed)
 
     log_dir = os.path.expanduser(rlkit_logger.get_snapshot_dir())
-    eval_log_dir = log_dir + "_eval"
     utils.cleanup_log_dir(log_dir)
-    utils.cleanup_log_dir(eval_log_dir)
 
     device = torch.device("cuda:0")
 
@@ -72,6 +75,18 @@ def experiment(variant):
         env_kwargs,
         seed,
         variant["num_processes"],
+        variant["rollout_kwargs"]["gamma"],
+        rlkit_logger.get_snapshot_dir(),
+        device,
+        False,
+        use_raw_actions=variant["use_raw_actions"],
+    )
+
+    eval_envs = make_vec_envs(
+        env_class_,
+        env_kwargs,
+        seed,
+        1,
         variant["rollout_kwargs"]["gamma"],
         rlkit_logger.get_snapshot_dir(),
         device,
@@ -136,9 +151,10 @@ def experiment(variant):
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
-            for info in infos:
-                if "episode" in info.keys():
-                    episode_rewards.append(info["episode"]["r"])
+            # for info in infos:
+            #     if "episode" in info.keys():
+            #         episode_rewards.append(info["episode"]["r"])
+
             # for r in reward:
             #     episode_rewards.append(r)
 
@@ -157,6 +173,9 @@ def experiment(variant):
                 masks,
                 bad_masks,
             )
+
+            if all(done):
+                obs = envs.reset()
 
         with torch.no_grad():
             next_value = actor_critic.get_value(
@@ -187,36 +206,12 @@ def experiment(variant):
                 os.path.join(save_path, args.env_name + ".pt"),
             )
 
-        if j % variant["log_interval"] == 0 and len(episode_rewards) > 1:
+        if variant["eval_interval"] is not None and j % variant["eval_interval"] == 0:
             total_num_steps = (j + 1) * variant["num_processes"] * variant["num_steps"]
-            end = time.time()
-            print(
-                "Updates {}, num timesteps {}, FPS {} \n Last {} training episodes: mean/median reward {:.1f}/{:.1f}, min/max reward {:.1f}/{:.1f}\n".format(
-                    j,
-                    total_num_steps,
-                    int(total_num_steps / (end - start)),
-                    len(episode_rewards),
-                    np.mean(episode_rewards),
-                    np.median(episode_rewards),
-                    np.min(episode_rewards),
-                    np.max(episode_rewards),
-                    dist_entropy,
-                    value_loss,
-                    action_loss,
-                )
-            )
-
-        if (
-            variant["eval_interval"] is not None
-            and len(episode_rewards) > 1
-            and j % variant["eval_interval"] == 0
-        ):
             evaluate(
                 actor_critic,
-                envs,
-                seed,
-                variant["num_processes"],
-                eval_log_dir,
+                eval_envs,
+                5,
                 device,
             )
             rlkit_logger.record_tabular(
