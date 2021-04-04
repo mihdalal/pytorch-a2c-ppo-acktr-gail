@@ -5,18 +5,25 @@ import numpy as np
 import torch
 from gym.spaces.box import Box
 from gym.wrappers.clip_action import ClipAction
-from rlkit.envs.dmc_wrappers import (ActionRepeat, KitchenWrapper,
-                                     NormalizeActions, TimeLimit)
-from stable_baselines3.common.atari_wrappers import (ClipRewardEnv,
-                                                     EpisodicLifeEnv,
-                                                     FireResetEnv,
-                                                     MaxAndSkipEnv,
-                                                     NoopResetEnv, WarpFrame)
+from rlkit.envs.mujoco_vec_wrappers import make_kitchen_env, make_metaworld_env
+from rlkit.envs.primitives_wrappers import (
+    ActionRepeat,
+    ImageEnvMetaworld,
+    ImageUnFlattenWrapper,
+    NormalizeActions,
+    TimeLimit,
+)
+from stable_baselines3.common.atari_wrappers import (
+    ClipRewardEnv,
+    EpisodicLifeEnv,
+    FireResetEnv,
+    MaxAndSkipEnv,
+    NoopResetEnv,
+    WarpFrame,
+)
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import (DummyVecEnv, SubprocVecEnv,
-                                              VecEnvWrapper)
-from stable_baselines3.common.vec_env.vec_normalize import \
-    VecNormalize as VecNormalize_
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
+from stable_baselines3.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
 
 try:
     import dmc2gym
@@ -35,15 +42,34 @@ except ImportError:
 
 
 def make_env(
-    env_class, env_kwargs, seed, rank, log_dir, allow_early_resets, use_raw_actions
+    env_suite,
+    env_class,
+    env_kwargs,
+    seed,
+    rank,
+    log_dir,
+    allow_early_resets,
+    use_raw_actions,
 ):
     def _thunk():
         gym.logger.set_level(40)
-        env = KitchenWrapper(env_class(**env_kwargs))
-        if use_raw_actions:
-            env = ActionRepeat(env, 2)
-            env = NormalizeActions(env)
-            env = TimeLimit(env, 500)
+        if env_suite == "kitchen":
+            env = ImageUnFlattenWrapper(make_kitchen_env(env_class, env_kwargs))
+            if use_raw_actions:
+                env = ActionRepeat(env, 2)
+                env = NormalizeActions(env)
+                env = TimeLimit(env, 500)
+        else:
+            env = TimeLimit(
+                ImageUnFlattenWrapper(
+                    ImageEnvMetaworld(
+                        make_metaworld_env(env_class, env_kwargs),
+                        imwidth=84,
+                        imheight=84,
+                    )
+                ),
+                150,
+            )
         env.seed(int(seed))
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions
@@ -57,6 +83,7 @@ def make_env(
 
 
 def make_vec_envs(
+    env_suite,
     env_class,
     env_kwargs,
     seed,
@@ -70,7 +97,14 @@ def make_vec_envs(
 ):
     envs = [
         make_env(
-            env_class, env_kwargs, seed, i, log_dir, allow_early_resets, use_raw_actions
+            env_suite,
+            env_class,
+            env_kwargs,
+            seed,
+            i,
+            log_dir,
+            allow_early_resets,
+            use_raw_actions,
         )
         for i in range(num_processes)
     ]

@@ -10,24 +10,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from d4rl.kitchen.kitchen_envs import (
-    KitchenHingeCabinetV0,
-    KitchenHingeSlideBottomLeftBurnerLightV0,
-    KitchenKettleV0,
-    KitchenLightSwitchV0,
-    KitchenMicrowaveKettleLightTopLeftBurnerV0,
-    KitchenMicrowaveV0,
-    KitchenSlideCabinetV0,
-    KitchenTopLeftBurnerV0,
-)
 from rlkit.core import logger as rlkit_logger
 from rlkit.core.eval_util import create_stats_ordered_dict
-from rlkit.envs.dmc_wrappers import (
-    ActionRepeat,
-    KitchenWrapper,
-    NormalizeActions,
-    TimeLimit,
-)
 
 from a2c_ppo_acktr import algo, utils
 from a2c_ppo_acktr.algo import gail
@@ -40,6 +24,7 @@ from a2c_ppo_acktr.storage import RolloutStorage
 
 def experiment(variant):
     env_class = variant["env_class"]
+    env_suite = variant["env_suite"]
     env_kwargs = variant["env_kwargs"]
     seed = variant["seed"]
     args = get_args()
@@ -52,26 +37,9 @@ def experiment(variant):
 
     device = torch.device("cuda:0")
 
-    if env_class == "microwave":
-        env_class_ = KitchenMicrowaveV0
-    elif env_class == "kettle":
-        env_class_ = KitchenKettleV0
-    elif env_class == "slide_cabinet":
-        env_class_ = KitchenSlideCabinetV0
-    elif env_class == "hinge_cabinet":
-        env_class_ = KitchenHingeCabinetV0
-    elif env_class == "top_left_burner":
-        env_class_ = KitchenTopLeftBurnerV0
-    elif env_class == "light_switch":
-        env_class_ = KitchenLightSwitchV0
-    elif env_class == "microwave_kettle_light_top_left_burner":
-        env_class_ = KitchenMicrowaveKettleLightTopLeftBurnerV0
-    elif env_class == "hinge_slide_bottom_left_burner_light":
-        env_class_ = KitchenHingeSlideBottomLeftBurnerLightV0
-    else:
-        raise EnvironmentError("invalid env provided")
     envs = make_vec_envs(
-        env_class_,
+        env_suite,
+        env_class,
         env_kwargs,
         seed,
         variant["num_processes"],
@@ -83,7 +51,8 @@ def experiment(variant):
     )
 
     eval_envs = make_vec_envs(
-        env_class_,
+        env_suite,
+        env_class,
         env_kwargs,
         seed,
         1,
