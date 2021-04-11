@@ -59,16 +59,18 @@ def make_env(
                 env = ActionRepeat(env, 2)
                 env = NormalizeActions(env)
                 env = TimeLimit(env, 500)
-        else:
+        elif env_suite == "metaworld":
+            env = ImageUnFlattenWrapper(
+                ImageEnvMetaworld(
+                    make_metaworld_env(env_class, env_kwargs),
+                    imwidth=84,
+                    imheight=84,
+                    reward_scale=0.01,
+                )
+            )
             env = TimeLimit(
-                ImageUnFlattenWrapper(
-                    ImageEnvMetaworld(
-                        make_metaworld_env(env_class, env_kwargs),
-                        imwidth=84,
-                        imheight=84,
-                    )
-                ),
-                150,
+                env,
+                env_kwargs["max_path_length"],
             )
         env.seed(int(seed))
 

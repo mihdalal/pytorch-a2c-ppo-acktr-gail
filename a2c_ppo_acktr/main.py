@@ -67,6 +67,7 @@ def experiment(variant):
         envs.observation_space.shape,
         envs.action_space,
         base_kwargs={"recurrent": args.recurrent_policy},
+        discrete_continuous_dist=variant.get("discrete_continuous_dist", False),
     )
     actor_critic.to(device)
 
