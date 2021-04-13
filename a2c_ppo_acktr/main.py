@@ -94,8 +94,10 @@ def experiment(variant):
         // variant["num_processes"]
     )
     num_train_calls = 0
+    total_train_expl_time = 0
     for j in range(num_updates):
         epoch_start_time = time.time()
+        train_expl_st = time.time()
         if args.use_linear_lr_decay:
             # decrease learning rate linearly
             utils.update_linear_schedule(
@@ -175,7 +177,7 @@ def experiment(variant):
                 [actor_critic, getattr(utils.get_vec_normalize(envs), "obs_rms", None)],
                 os.path.join(save_path, args.env_name + ".pt"),
             )
-
+        total_train_expl_time += time.time()-train_expl_st
         if variant["eval_interval"] is not None and j % variant["eval_interval"] == 0:
             total_num_steps = (j + 1) * variant["num_processes"] * variant["num_steps"]
             evaluate(
@@ -188,6 +190,7 @@ def experiment(variant):
                 "time/epoch (s)", time.time() - epoch_start_time
             )
             rlkit_logger.record_tabular("time/total (s)", time.time() - start)
+            rlkit_logger.record_tabular("time/training and exploration (s)", total_train_expl_time)
             rlkit_logger.record_tabular("exploration/num steps total", total_num_steps)
             rlkit_logger.record_tabular("trainer/num train calls", num_train_calls)
             rlkit_logger.record_tabular("Epoch", j // variant["eval_interval"])

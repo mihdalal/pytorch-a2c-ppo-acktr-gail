@@ -119,8 +119,8 @@ class FixedSplitDist(SplitDist):
 
     def log_prob(self, actions):
         return (
-            self._dist1.log_prob(actions[:, :12])
-            + self._dist2.log_prob(actions[:, 12:]).sum(dim=-1)
+            self._dist1.log_prob(actions[:, :self.split_dim])
+            + self._dist2.log_prob(actions[:, self.split_dim:]).sum(dim=-1)
         ).reshape(-1, 1)
 
     def sample(self):
@@ -161,5 +161,5 @@ class DiscreteContinuousDist(nn.Module):
         continuous_action_mean = torch.cat((continuous_action_mean, extra), -1)
         dist1 = OneHotDist(logits=discrete_logits)
         dist2 = FixedNormal(continuous_action_mean, action_logstd.exp())
-        dist = FixedSplitDist(dist1, dist2)
+        dist = FixedSplitDist(dist1, dist2, self.discrete_action_dim)
         return dist
