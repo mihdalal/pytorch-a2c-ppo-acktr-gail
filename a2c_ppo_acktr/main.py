@@ -104,7 +104,7 @@ def experiment(variant):
                 agent.optimizer,
                 j,
                 num_updates,
-                agent.optimizer.lr if "ppo" == "acktr" else args.lr,
+                variant['algorithm_kwargs']['lr'],
             )
 
         for step in range(variant["num_steps"]):
