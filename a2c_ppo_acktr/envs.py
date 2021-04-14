@@ -61,7 +61,9 @@ def make_env(
                 env = TimeLimit(env, 500)
         elif env_suite == "metaworld":
             use_image_obs = env_kwargs['use_image_obs']
+            reward_scale = env_kwargs['reward_scale']
             del env_kwargs['use_image_obs']
+            del env_kwargs['reward_scale']
             env = make_metaworld_env(env_class, env_kwargs)
             if use_image_obs:
                 env = ImageUnFlattenWrapper(
@@ -69,7 +71,7 @@ def make_env(
                         env,
                         imwidth=84,
                         imheight=84,
-                        reward_scale=0.01,
+                        reward_scale=reward_scale,
                     )
                 )
             env = TimeLimit(
@@ -125,6 +127,9 @@ def make_vec_envs(
             envs = VecNormalize(envs, norm_reward=False)
         else:
             envs = VecNormalize(envs, gamma=gamma)
+    if len(envs.observation_space.shape) == 3:
+        if gamma:
+            envs = VecNormalize(envs, gamma=gamma, norm_obs=False)
 
     envs = VecPyTorch(envs, device)
 
@@ -132,7 +137,6 @@ def make_vec_envs(
         envs = VecPyTorchFrameStack(envs, num_frame_stack, device)
     elif len(envs.observation_space.shape) == 3:
         envs = VecPyTorchFrameStack(envs, 4, device)
-
     return envs
 
 

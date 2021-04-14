@@ -66,7 +66,7 @@ def experiment(variant):
     actor_critic = Policy(
         envs.observation_space.shape,
         envs.action_space,
-        base_kwargs={"recurrent": args.recurrent_policy},
+        base_kwargs=variant['actor_kwargs'],
         discrete_continuous_dist=variant.get("discrete_continuous_dist", False),
     )
     actor_critic.to(device)
@@ -98,7 +98,7 @@ def experiment(variant):
     for j in range(num_updates):
         epoch_start_time = time.time()
         train_expl_st = time.time()
-        if args.use_linear_lr_decay:
+        if variant['use_linear_lr_decay']:
             # decrease learning rate linearly
             utils.update_linear_schedule(
                 agent.optimizer,
