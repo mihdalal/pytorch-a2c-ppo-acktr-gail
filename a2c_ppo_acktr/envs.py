@@ -60,11 +60,14 @@ def make_env(
                 env = NormalizeActions(env)
                 env = TimeLimit(env, 500)
         elif env_suite == "metaworld":
-            use_image_obs = env_kwargs['use_image_obs']
-            reward_scale = env_kwargs['reward_scale']
-            del env_kwargs['use_image_obs']
-            del env_kwargs['reward_scale']
-            env = make_metaworld_env(env_class, env_kwargs)
+            env_kwargs_new = env_kwargs.copy()
+            use_image_obs = env_kwargs_new['use_image_obs']
+            reward_scale = env_kwargs_new['reward_scale']
+            use_dm_backend = env_kwargs_new['use_dm_backend']
+            del env_kwargs_new['use_image_obs']
+            del env_kwargs_new['reward_scale']
+            del env_kwargs_new['use_dm_backend']
+            env = make_metaworld_env(env_class, env_kwargs_new, use_dm_backend)
             if use_image_obs:
                 env = ImageUnFlattenWrapper(
                     ImageEnvMetaworld(
@@ -76,8 +79,11 @@ def make_env(
                 )
             env = TimeLimit(
                 env,
-                env_kwargs["max_path_length"],
+                env_kwargs_new["max_path_length"],
             )
+
+        if str(env.__class__.__name__).find('TimeLimit') >= 0:
+            env = TimeLimitMask(env)
         env.seed(int(seed))
 
         # If the input has shape (W,H,3), wrap for PyTorch convolutions

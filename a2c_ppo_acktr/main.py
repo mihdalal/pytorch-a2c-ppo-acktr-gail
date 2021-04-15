@@ -50,8 +50,7 @@ def experiment(variant):
         use_raw_actions=variant["use_raw_actions"],
     )
 
-    eval_envs = make_vec_envs(
-        env_suite,
+    eval_env_args = (env_suite,
         env_class,
         env_kwargs,
         seed,
@@ -59,9 +58,9 @@ def experiment(variant):
         variant["rollout_kwargs"]["gamma"],
         rlkit_logger.get_snapshot_dir(),
         device,
-        False,
-        use_raw_actions=variant["use_raw_actions"],
-    )
+        False,)
+
+    eval_env_kwargs = dict(use_raw_actions=variant["use_raw_actions"])
 
     actor_critic = Policy(
         envs.observation_space.shape,
@@ -86,6 +85,7 @@ def experiment(variant):
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
+    episode_success = deque(maxlen=10)
 
     start = time.time()
     num_updates = (
@@ -123,9 +123,11 @@ def experiment(variant):
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
-            # for info in infos:
-            #     if "episode" in info.keys():
-            #         episode_rewards.append(info["episode"]["r"])
+            for info in infos:
+                # if "episode" in info.keys():
+                #     episode_rewards.append(info["episode"]["r"])
+                if all(done):
+                    episode_success.append(info['success'])
 
             # for r in reward:
             #     episode_rewards.append(r)
@@ -180,9 +182,12 @@ def experiment(variant):
         total_train_expl_time += time.time()-train_expl_st
         if variant["eval_interval"] is not None and j % variant["eval_interval"] == 0:
             total_num_steps = (j + 1) * variant["num_processes"] * variant["num_steps"]
+            obs_rms = utils.get_vec_normalize(envs).obs_rms
             evaluate(
                 actor_critic,
-                eval_envs,
+                eval_env_args,
+                eval_env_kwargs,
+                obs_rms,
                 5,
                 device,
             )

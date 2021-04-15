@@ -7,7 +7,14 @@ from a2c_ppo_acktr import utils
 from a2c_ppo_acktr.envs import make_vec_envs
 
 
-def evaluate(actor_critic, eval_envs, num_episodes, device):
+def evaluate(actor_critic, eval_env_args, eval_env_kwargs, obs_rms, num_episodes, device):
+    eval_envs = make_vec_envs(
+        *eval_env_args, **eval_env_kwargs
+    )
+    vec_norm = utils.get_vec_normalize(eval_envs)
+    if vec_norm is not None:
+        vec_norm.eval()
+        vec_norm.obs_rms = obs_rms
     rewards = 0
     all_infos = []
     for i in range(num_episodes):
