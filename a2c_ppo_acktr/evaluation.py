@@ -9,7 +9,7 @@ from a2c_ppo_acktr.envs import make_vec_envs
 
 def evaluate(actor_critic, eval_env_args, eval_env_kwargs, obs_rms, num_episodes, device):
     eval_envs = make_vec_envs(
-        *eval_env_args, **eval_env_kwargs
+        *eval_env_args, disable_time_limit_mask=True, **eval_env_kwargs
     )
     vec_norm = utils.get_vec_normalize(eval_envs)
     if vec_norm is not None:

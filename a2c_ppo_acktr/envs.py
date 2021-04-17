@@ -50,6 +50,7 @@ def make_env(
     log_dir,
     allow_early_resets,
     use_raw_actions,
+    disable_time_limit_mask,
 ):
     def _thunk():
         gym.logger.set_level(40)
@@ -82,7 +83,7 @@ def make_env(
                 env_kwargs_new["max_path_length"],
             )
 
-        if str(env.__class__.__name__).find('TimeLimit') >= 0:
+        if str(env.__class__.__name__).find('TimeLimit') >= 0 and not disable_time_limit_mask:
             env = TimeLimitMask(env)
         env.seed(int(seed))
 
@@ -108,6 +109,7 @@ def make_vec_envs(
     allow_early_resets,
     num_frame_stack=None,
     use_raw_actions=False,
+    disable_time_limit_mask=False,
 ):
     envs = [
         make_env(
@@ -119,6 +121,7 @@ def make_vec_envs(
             log_dir,
             allow_early_resets,
             use_raw_actions,
+            disable_time_limit_mask,
         )
         for i in range(num_processes)
     ]
