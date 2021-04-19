@@ -85,7 +85,6 @@ def experiment(variant):
     rollouts.to(device)
 
     episode_rewards = deque(maxlen=10)
-    episode_success = deque(maxlen=10)
 
     start = time.time()
     num_updates = (
@@ -123,11 +122,9 @@ def experiment(variant):
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
 
-            for info in infos:
+            # for info in infos:
                 # if "episode" in info.keys():
                 #     episode_rewards.append(info["episode"]["r"])
-                if all(done):
-                    episode_success.append(info['success'])
 
             # for r in reward:
             #     episode_rewards.append(r)

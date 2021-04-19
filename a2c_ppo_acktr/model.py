@@ -179,7 +179,7 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, hidden_activation='relu'):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(
@@ -189,16 +189,21 @@ class CNNBase(NNBase):
             nn.init.calculate_gain("relu"),
         )
 
+        if hidden_activation == 'tanh':
+            hidden_activation = nn.Tanh
+        elif hidden_activation == 'relu':
+            hidden_activation = nn.ReLU
+
         self.main = nn.Sequential(
             init_(nn.Conv2d(num_inputs, 32, 8, stride=4)),
-            nn.ReLU(),
+            hidden_activation(),
             init_(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.ReLU(),
+            hidden_activation(),
             init_(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.ReLU(),
+            hidden_activation(),
             Flatten(),
             init_(nn.Linear(32 * 7 * 7, hidden_size)),
-            nn.ReLU(),
+            hidden_activation(),
         )
 
         init_ = lambda m: init(
