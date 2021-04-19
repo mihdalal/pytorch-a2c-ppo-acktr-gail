@@ -154,11 +154,14 @@ class DiscreteContinuousDist(nn.Module):
             zeros = zeros.cuda()
 
         action_logstd = self.logstd(zeros)
-
-        discrete_logits, continuous_action_mean, extra = action_mean.split(
+        out = action_mean.split(
             self.discrete_action_dim, -1
         )
-        continuous_action_mean = torch.cat((continuous_action_mean, extra), -1)
+        if len(out) == 2:
+            discrete_logits, continuous_action_mean = out
+        else:
+            discrete_logits, continuous_action_mean, extra = out
+            continuous_action_mean = torch.cat((continuous_action_mean, extra), -1)
         dist1 = OneHotDist(logits=discrete_logits)
         dist2 = FixedNormal(continuous_action_mean, action_logstd.exp())
         dist = FixedSplitDist(dist1, dist2, self.discrete_action_dim)

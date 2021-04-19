@@ -67,6 +67,7 @@ def experiment(variant):
         envs.action_space,
         base_kwargs=variant['actor_kwargs'],
         discrete_continuous_dist=variant.get("discrete_continuous_dist", False),
+        env = envs
     )
     actor_critic.to(device)
 

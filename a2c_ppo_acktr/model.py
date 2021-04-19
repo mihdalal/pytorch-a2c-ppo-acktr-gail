@@ -42,7 +42,7 @@ class Policy(nn.Module):
 
         if discrete_continuous_dist:
             num_outputs = action_space.shape[0]
-            self.dist = DiscreteContinuousDist(self.base.output_size, num_outputs, 12)
+            self.dist = DiscreteContinuousDist(self.base.output_size, num_outputs, 9)
         else:
             if action_space.__class__.__name__ == "Discrete":
                 num_outputs = action_space.n
