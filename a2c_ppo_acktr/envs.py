@@ -5,14 +5,6 @@ import numpy as np
 import torch
 from gym.spaces.box import Box
 from gym.wrappers.clip_action import ClipAction
-from rlkit.envs.mujoco_vec_wrappers import make_kitchen_env, make_metaworld_env
-from rlkit.envs.primitives_wrappers import (
-    ActionRepeat,
-    ImageEnvMetaworld,
-    ImageUnFlattenWrapper,
-    NormalizeActions,
-    TimeLimit,
-)
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -21,6 +13,7 @@ from stable_baselines3.common.atari_wrappers import (
     NoopResetEnv,
     WarpFrame,
 )
+import rlkit.envs.primitives_make_env as primitives_make_env
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize as VecNormalize_
@@ -49,34 +42,11 @@ def make_env(
     rank,
     log_dir,
     allow_early_resets,
-    use_raw_actions,
     disable_time_limit_mask,
 ):
     def _thunk():
         gym.logger.set_level(40)
-        if env_suite == "kitchen":
-            env = ImageUnFlattenWrapper(make_kitchen_env(env_class, env_kwargs))
-            if use_raw_actions:
-                env = ActionRepeat(env, 2)
-                env = NormalizeActions(env)
-                env = TimeLimit(env, 500)
-        elif env_suite == "metaworld":
-            use_image_obs = env_kwargs['use_image_obs']
-            reward_scale = env_kwargs['reward_scale']
-            use_dm_backend = env_kwargs['use_dm_backend']
-            env = make_metaworld_env(env_class, env_kwargs, use_dm_backend)
-            if use_image_obs:
-                env = ImageUnFlattenWrapper(
-                    ImageEnvMetaworld(
-                        env,
-                        imwidth=84,
-                        imheight=84,
-                    )
-                )
-            env = TimeLimit(
-                env,
-                env_kwargs["max_path_length"],
-            )
+        env = primitives_make_env.make_env(env_suite, env_class, env_kwargs)
 
         if str(env.__class__.__name__).find('TimeLimit') >= 0 and not disable_time_limit_mask:
             env = TimeLimitMask(env)
@@ -103,7 +73,6 @@ def make_vec_envs(
     device,
     allow_early_resets,
     num_frame_stack=None,
-    use_raw_actions=False,
     disable_time_limit_mask=False,
 ):
     envs = [
@@ -115,7 +84,6 @@ def make_vec_envs(
             i,
             log_dir,
             allow_early_resets,
-            use_raw_actions,
             disable_time_limit_mask,
         )
         for i in range(num_processes)

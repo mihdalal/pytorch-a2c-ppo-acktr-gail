@@ -23,7 +23,7 @@ from a2c_ppo_acktr.storage import RolloutStorage
 
 
 def experiment(variant):
-    env_class = variant["env_class"]
+    env_name = variant["env_name"]
     env_suite = variant["env_suite"]
     env_kwargs = variant["env_kwargs"]
     seed = variant["seed"]
@@ -39,7 +39,7 @@ def experiment(variant):
 
     envs = make_vec_envs(
         env_suite,
-        env_class,
+        env_name,
         env_kwargs,
         seed,
         variant["num_processes"],
@@ -47,11 +47,10 @@ def experiment(variant):
         rlkit_logger.get_snapshot_dir(),
         device,
         False,
-        use_raw_actions=variant["use_raw_actions"],
     )
 
     eval_env_args = (env_suite,
-        env_class,
+        env_name,
         env_kwargs,
         seed,
         1,
@@ -60,7 +59,7 @@ def experiment(variant):
         device,
         False,)
 
-    eval_env_kwargs = dict(use_raw_actions=variant["use_raw_actions"])
+    eval_env_kwargs = dict()
 
     actor_critic = Policy(
         envs.observation_space.shape,
