@@ -71,7 +71,6 @@ def make_env(
                         env,
                         imwidth=84,
                         imheight=84,
-                        reward_scale=reward_scale,
                     )
                 )
             env = TimeLimit(
