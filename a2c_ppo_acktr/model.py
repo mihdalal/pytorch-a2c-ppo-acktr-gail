@@ -26,6 +26,7 @@ class Policy(nn.Module):
         base_kwargs=None,
         discrete_continuous_dist=False,
         env=None,
+        multi_step_horizon=1,
     ):
         super(Policy, self).__init__()
         if base_kwargs is None:
@@ -37,8 +38,8 @@ class Policy(nn.Module):
                 base = MLPBase
             else:
                 raise NotImplementedError
-
-        self.base = base(obs_shape[0], **base_kwargs)
+        self.multi_step_horizon = multi_step_horizon
+        self.base = base(obs_shape[0], multi_step_horizon=multi_step_horizon, **base_kwargs)
 
         if discrete_continuous_dist:
             num_outputs = action_space.shape[0]
@@ -68,8 +69,12 @@ class Policy(nn.Module):
     def forward(self, inputs, rnn_hxs, masks):
         raise NotImplementedError
 
-    def act(self, inputs, rnn_hxs, masks, deterministic=False):
+    def act(self, inputs, rnn_hxs, masks, deterministic=False, index=0):
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        feat_size = actor_features.shape[1]//self.multi_step_horizon
+        actor_features = actor_features[:, index*feat_size:(index+1)*feat_size]
+        value = value[:, index:index+1]
+
         dist = self.dist(actor_features)
         if deterministic:
             action = dist.mode()
@@ -81,12 +86,17 @@ class Policy(nn.Module):
 
         return value, action, action_log_probs, rnn_hxs
 
-    def get_value(self, inputs, rnn_hxs, masks):
+    def get_value(self, inputs, rnn_hxs, masks, index=0):
         value, _, _ = self.base(inputs, rnn_hxs, masks)
+        value = value[:, index:index+1]
         return value
 
-    def evaluate_actions(self, inputs, rnn_hxs, masks, action):
+    def evaluate_actions(self, inputs, rnn_hxs, masks, action, indices):
         value, actor_features, rnn_hxs = self.base(inputs, rnn_hxs, masks)
+        value = torch.gather(value, 1, indices.long())
+        feat_size = actor_features.shape[1]//self.multi_step_horizon
+        af = torch.cat([actor_features[:, feat_size*i:feat_size*(i+1)].unsqueeze(1) for i in range(self.multi_step_horizon)], 1)
+        actor_features = torch.gather(af, 1, indices.long().unsqueeze(-1).repeat(1, 1, feat_size))[:, 0, :]
         dist = self.dist(actor_features)
 
         action_log_probs = dist.log_probs(action)
@@ -179,7 +189,7 @@ class NNBase(nn.Module):
 
 
 class CNNBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=512, hidden_activation='relu'):
+    def __init__(self, num_inputs, recurrent=False, hidden_size=512, hidden_activation='relu', multi_step_horizon=1):
         super(CNNBase, self).__init__(recurrent, hidden_size, hidden_size)
 
         init_ = lambda m: init(
@@ -202,7 +212,7 @@ class CNNBase(NNBase):
             init_(nn.Conv2d(64, 32, 3, stride=1)),
             hidden_activation(),
             Flatten(),
-            init_(nn.Linear(32 * 7 * 7, hidden_size)),
+            init_(nn.Linear(32 * 7 * 7, hidden_size*multi_step_horizon)),
             hidden_activation(),
         )
 
@@ -210,7 +220,7 @@ class CNNBase(NNBase):
             m, nn.init.orthogonal_, lambda x: nn.init.constant_(x, 0)
         )
 
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear = init_(nn.Linear(hidden_size*multi_step_horizon, multi_step_horizon))
 
         self.train()
 
@@ -219,7 +229,6 @@ class CNNBase(NNBase):
 
         if self.is_recurrent:
             x, rnn_hxs = self._forward_gru(x, rnn_hxs, masks)
-
         return self.critic_linear(x), x, rnn_hxs
 
 

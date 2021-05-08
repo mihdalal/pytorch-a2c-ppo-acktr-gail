@@ -26,6 +26,7 @@ def experiment(variant):
     env_name = variant["env_name"]
     env_suite = variant["env_suite"]
     env_kwargs = variant["env_kwargs"]
+    multi_step_horizon = variant.get('multi_step_horizon', 1)
     seed = variant["seed"]
     args = get_args()
 
@@ -66,7 +67,8 @@ def experiment(variant):
         envs.action_space,
         base_kwargs=variant['actor_kwargs'],
         discrete_continuous_dist=variant.get("discrete_continuous_dist", False),
-        env = envs
+        env = envs,
+        multi_step_horizon=multi_step_horizon,
     )
     actor_critic.to(device)
 
@@ -81,6 +83,7 @@ def experiment(variant):
     )
 
     obs = envs.reset()
+    policy_step_obs = obs
     rollouts.obs[0].copy_(obs)
     rollouts.to(device)
 
@@ -118,6 +121,7 @@ def experiment(variant):
                     rollouts.obs[step],
                     rollouts.recurrent_hidden_states[step],
                     rollouts.masks[step],
+                    index = step % multi_step_horizon
                 )
             # Obser reward and next obs
             obs, reward, done, infos = envs.step(action)
@@ -134,6 +138,17 @@ def experiment(variant):
             bad_masks = torch.FloatTensor(
                 [[0.0] if "bad_transition" in info.keys() else [1.0] for info in infos]
             )
+            if (step+1) % multi_step_horizon != 0:
+                # +1 because you would take the action from the reset state
+                obs = policy_step_obs
+            else:
+                policy_step_obs = obs
+
+
+            if all(done):
+                obs = envs.reset()
+                obs = policy_step_obs
+
             rollouts.insert(
                 obs,
                 recurrent_hidden_states,
@@ -143,18 +158,16 @@ def experiment(variant):
                 reward,
                 masks,
                 bad_masks,
+                torch.tensor([step%multi_step_horizon]*variant["num_processes"]),
             )
-
-            if all(done):
-                obs = envs.reset()
 
         with torch.no_grad():
             next_value = actor_critic.get_value(
                 rollouts.obs[-1],
                 rollouts.recurrent_hidden_states[-1],
                 rollouts.masks[-1],
+                step%multi_step_horizon
             ).detach()
-
         rollouts.compute_returns(next_value, **variant["rollout_kwargs"])
 
         value_loss, action_loss, dist_entropy, num_calls = agent.update(rollouts)
