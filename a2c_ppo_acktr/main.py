@@ -147,7 +147,7 @@ def experiment(variant):
 
             if all(done):
                 obs = envs.reset()
-                obs = policy_step_obs
+                policy_step_obs = obs
 
             rollouts.insert(
                 obs,
